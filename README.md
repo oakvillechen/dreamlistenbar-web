@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🎧 悦听吧 (DreamListenBar) Web App
 
-## Getting Started
+移动端友好的有声小说播放应用 - Glassmorphism 设计风格
 
-First, run the development server:
+## ✨ 功能特性
+
+- 🏠 **首页分类** - 最新更新、玄幻奇幻、武侠修真等10个分类
+- 🔍 **智能搜索** - 支持书名、作者、主播搜索
+- 📖 **书籍详情** - 封面展示、章节列表、分页浏览
+- 🎵 **全局播放器** - 切换页面不中断播放
+- ⏯️ **播放控制** - 上/下一曲、快进/快退、倍速播放
+- 📱 **PWA支持** - 可添加到主屏幕，像原生App一样使用
+- 🌙 **深色模式** - Glassmorphism 玻璃拟物化设计
+
+## 🛠️ 技术栈
+
+- **前端**: Next.js 14 + TypeScript + Tailwind CSS
+- **后端**: Node.js + Playwright (音频解析)
+- **数据源**: yuetingba.cn
+
+## 🚀 部署到 Vercel
+
+1. 点击下方按钮一键部署
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/YOUR_USERNAME/dreamlistenbar-web)
+
+2. 设置环境变量：
+   - `BACKEND_URL`: 你的后端服务地址（用于音频解析）
+
+## 🔧 本地开发
 
 ```bash
+# 安装依赖
+npm install
+
+# 启动开发服务器
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+打开 http://localhost:3000 查看
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📋 环境变量
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| 变量名 | 说明 | 默认值 |
+|--------|------|--------|
+| BACKEND_URL | Playwright 后端服务地址 | http://localhost:3001 |
 
-## Learn More
+## 📱 PWA 配置
 
-To learn more about Next.js, take a look at the following resources:
+在手机浏览器中打开后，点击"添加到主屏幕"即可像原生App一样使用。
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Made with 💙 by DreamHomeGTA

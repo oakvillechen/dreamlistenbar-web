@@ -15,7 +15,10 @@ export async function GET(request: NextRequest) {
     // 目标网站使用 name 参数
     const url = `http://yuetingba.cn/Search?type=${type}&name=${encodeURIComponent(keyword)}`;
     const { data: html } = await axios.get(url, {
-      headers: { 'User-Agent': 'Mozilla/5.0' },
+      headers: { 
+        'User-Agent': 'Mozilla/5.0',
+        'ngrok-skip-browser-warning': 'true'
+      },
       timeout: 15000
     });
     

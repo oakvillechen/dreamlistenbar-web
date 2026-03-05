@@ -1,7 +1,7 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
+import { proxyCoverUrl } from '@/lib/proxy';
 
 interface BookCardProps {
   book: {
@@ -15,19 +15,20 @@ interface BookCardProps {
 }
 
 export default function BookCard({ book }: BookCardProps) {
+  const coverSrc = proxyCoverUrl(book.cover);
+
   return (
     <Link href={`/book/${book.bookId}`} className="block">
       <div className="glass-card p-3 hover:bg-white/10 transition-all duration-300 group cursor-pointer">
         <div className="flex gap-3">
           {/* Cover */}
           <div className="relative w-20 h-28 shrink-0 rounded-lg overflow-hidden bg-white/5">
-            {book.cover ? (
-              <Image
-                src={book.cover}
+            {coverSrc ? (
+              <img
+                src={coverSrc}
                 alt={book.title}
-                fill
-                className="object-cover group-hover:scale-105 transition-transform duration-300"
-                unoptimized
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                loading="lazy"
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-3xl">

@@ -122,7 +122,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="text-center py-8 text-gray-500 text-sm">
-        <p>🎧 悦听吧 - Glassmorphism Design</p>
+        <p>🎧 DreamListenBar</p>
       </footer>
     </div>
   );

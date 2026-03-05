@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { proxyCoverUrl } from '@/lib/proxy';
 
 interface PlayerProps {
   audioUrl: string | null;
@@ -29,6 +30,13 @@ export default function Player({
   const [duration, setDuration] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [speed, setSpeed] = useState(1);
+  
+  // 定时关闭
+  const [sleepTimer, setSleepTimer] = useState<number | null>(null);
+  const [sleepRemaining, setSleepRemaining] = useState<number>(0);
+  const [showSleepMenu, setShowSleepMenu] = useState(false);
+  const sleepIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (audioRef.current && audioUrl) {
@@ -36,21 +44,66 @@ export default function Player({
       setError(null);
       
       const currentSrc = audioRef.current.currentSrc || audioRef.current.src;
-      // Skip if the url is exactly the same to prevent loop
       if (currentSrc !== audioUrl) {
         audioRef.current.src = audioUrl;
         audioRef.current.load();
       }
       
-      // Auto play when url changes
       audioRef.current.play().then(() => {
         setIsPlaying(true);
       }).catch(err => {
-        console.error('Auto-play blocked by browser:', err);
+        console.error('Auto-play blocked:', err);
         setIsPlaying(false);
       });
     }
   }, [audioUrl]);
+
+  // 清理定时器
+  useEffect(() => {
+    return () => {
+      if (sleepIntervalRef.current) {
+        clearInterval(sleepIntervalRef.current);
+      }
+    };
+  }, []);
+
+  const startSleepTimer = (minutes: number) => {
+    // 清除已有定时器
+    if (sleepIntervalRef.current) {
+      clearInterval(sleepIntervalRef.current);
+    }
+
+    const endTime = Date.now() + minutes * 60 * 1000;
+    setSleepTimer(minutes);
+    setSleepRemaining(minutes * 60);
+    setShowSleepMenu(false);
+
+    sleepIntervalRef.current = setInterval(() => {
+      const remaining = Math.max(0, Math.floor((endTime - Date.now()) / 1000));
+      setSleepRemaining(remaining);
+      
+      if (remaining <= 0) {
+        // 时间到，暂停播放
+        if (audioRef.current) {
+          audioRef.current.pause();
+          setIsPlaying(false);
+        }
+        setSleepTimer(null);
+        if (sleepIntervalRef.current) {
+          clearInterval(sleepIntervalRef.current);
+        }
+      }
+    }, 1000);
+  };
+
+  const cancelSleepTimer = () => {
+    if (sleepIntervalRef.current) {
+      clearInterval(sleepIntervalRef.current);
+    }
+    setSleepTimer(null);
+    setSleepRemaining(0);
+    setShowSleepMenu(false);
+  };
 
   const togglePlay = async () => {
     if (!audioRef.current) return;
@@ -101,6 +154,12 @@ export default function Player({
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  const formatSleepTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
   const handleSkip = (seconds: number) => {
     if (audioRef.current) {
       audioRef.current.currentTime = Math.min(
@@ -109,8 +168,6 @@ export default function Player({
       );
     }
   };
-
-  const [speed, setSpeed] = useState(1);
   
   const changeSpeed = () => {
     const speeds = [0.5, 0.75, 1, 1.25, 1.5, 2];
@@ -122,35 +179,37 @@ export default function Player({
     }
   };
 
+  const handleEnded = () => {
+    setIsPlaying(false);
+    // 自动播放下一章
+    if (hasNext && onNext) {
+      onNext();
+    }
+  };
+
   if (!audioUrl) return null;
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-50 safe-bottom">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm -z-10"
-        onClick={onClose}
-      />
-      
-      {/* Player */}
-      <div className="audio-player glass-card rounded-t-3xl p-4 mx-2">
+      {/* Player Card */}
+      <div className="glass-card rounded-t-3xl p-4 mx-2 border-t border-white/10">
         {/* Track Info */}
-        <div className="flex items-center gap-3 mb-4">
-          <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-white/10 shrink-0">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-white/10 shrink-0">
             {cover ? (
               <img
-                src={cover}
+                src={proxyCoverUrl(cover)}
                 alt={title}
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-2xl">
+              <div className="w-full h-full flex items-center justify-center text-xl">
                 🎧
               </div>
             )}
             {isPlaying && (
               <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                <div className="w-3 h-3 bg-white rounded-full animate-pulse" />
+                <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
               </div>
             )}
           </div>
@@ -160,6 +219,23 @@ export default function Player({
               {isLoading ? '加载中...' : error || `${formatTime(currentTime)} / ${formatTime(duration)}`}
             </p>
           </div>
+          
+          {/* Sleep Timer Button */}
+          <button
+            onClick={() => setShowSleepMenu(!showSleepMenu)}
+            className={`p-2 transition-colors relative ${sleepTimer ? 'text-indigo-400' : 'text-gray-400 hover:text-white'}`}
+            title="定时关闭"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            {sleepTimer && (
+              <span className="absolute -top-1 -right-1 text-[9px] bg-indigo-500 text-white rounded-full w-4 h-4 flex items-center justify-center">
+                {Math.ceil(sleepRemaining / 60)}
+              </span>
+            )}
+          </button>
+
           <button
             onClick={onClose}
             className="p-2 text-gray-400 hover:text-white transition-colors"
@@ -170,8 +246,42 @@ export default function Player({
           </button>
         </div>
 
+        {/* Sleep Timer Menu */}
+        {showSleepMenu && (
+          <div className="mb-3 p-3 rounded-xl bg-white/5 border border-white/10">
+            <p className="text-xs text-gray-400 mb-2">⏰ 定时关闭</p>
+            <div className="flex flex-wrap gap-2">
+              {[15, 30, 45, 60, 90, 120].map((min) => (
+                <button
+                  key={min}
+                  onClick={() => startSleepTimer(min)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all
+                    ${sleepTimer === min 
+                      ? 'bg-indigo-500 text-white' 
+                      : 'bg-white/10 text-gray-300 hover:bg-white/20'}`}
+                >
+                  {min < 60 ? `${min}分钟` : `${min / 60}小时`}
+                </button>
+              ))}
+              {sleepTimer && (
+                <button
+                  onClick={cancelSleepTimer}
+                  className="px-3 py-1.5 rounded-lg text-xs font-medium bg-red-500/20 text-red-300 hover:bg-red-500/30"
+                >
+                  取消
+                </button>
+              )}
+            </div>
+            {sleepTimer && (
+              <p className="text-xs text-indigo-300 mt-2">
+                ⏱ 剩余 {formatSleepTime(sleepRemaining)} 后自动暂停
+              </p>
+            )}
+          </div>
+        )}
+
         {/* Progress Bar */}
-        <div className="mb-4">
+        <div className="mb-3">
           <input
             type="range"
             min={0}
@@ -187,86 +297,102 @@ export default function Player({
               [&::-webkit-slider-thumb]:shadow-lg
               [&::-webkit-slider-thumb]:cursor-pointer"
           />
+          <div className="flex justify-between text-[10px] text-gray-500 mt-1">
+            <span>{formatTime(currentTime)}</span>
+            <span>{formatTime(duration)}</span>
+          </div>
         </div>
 
-        {/* Controls */}
-        <div className="flex items-center justify-center gap-4">
+        {/* Controls - 重新设计，清晰区分快进和切集 */}
+        <div className="flex items-center justify-between">
           {/* Speed */}
           <button
             onClick={changeSpeed}
-            className="w-10 h-10 flex items-center justify-center text-xs font-medium text-gray-300 hover:text-white transition-colors"
+            className="w-12 h-10 flex items-center justify-center text-xs font-bold text-gray-300 hover:text-white transition-colors rounded-lg bg-white/5"
           >
             {speed}x
           </button>
 
-          {/* Skip Back */}
-          <button
-            onClick={() => handleSkip(-15)}
-            className="p-2 text-gray-300 hover:text-white transition-colors"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.334 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z" />
-            </svg>
-          </button>
-
-          {/* Prev */}
-          <button
-            onClick={onPrev}
-            disabled={!hasPrev}
-            className={`p-2 transition-colors ${hasPrev ? 'text-gray-300 hover:text-white' : 'text-gray-600 cursor-not-allowed'}`}
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-            </svg>
-          </button>
-
-          {/* Play/Pause */}
-          <button
-            onClick={togglePlay}
-            disabled={isLoading || !!error}
-            className={`w-14 h-14 rounded-full flex items-center justify-center transition-all
-              ${isLoading || error 
-                ? 'bg-gray-600 cursor-not-allowed' 
-                : isPlaying 
-                  ? 'bg-indigo-500 playing' 
-                  : 'bg-indigo-500 hover:bg-indigo-400'}`}
-          >
-            {isLoading ? (
-              <svg className="w-6 h-6 animate-spin text-white" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          {/* Main Controls */}
+          <div className="flex items-center gap-1">
+            {/* 上一章 */}
+            <button
+              onClick={onPrev}
+              disabled={!hasPrev}
+              className={`flex flex-col items-center justify-center w-12 h-10 rounded-lg transition-colors
+                ${hasPrev ? 'text-gray-300 hover:text-white hover:bg-white/10' : 'text-gray-600 cursor-not-allowed'}`}
+              title="上一章"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
               </svg>
-            ) : isPlaying ? (
-              <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-              </svg>
-            ) : (
-              <svg className="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            )}
-          </button>
+              <span className="text-[9px] mt-0.5">上一章</span>
+            </button>
 
-          {/* Next */}
-          <button
-            onClick={onNext}
-            disabled={!hasNext}
-            className={`p-2 transition-colors ${hasNext ? 'text-gray-300 hover:text-white' : 'text-gray-600 cursor-not-allowed'}`}
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-            </svg>
-          </button>
+            {/* 快退15秒 */}
+            <button
+              onClick={() => handleSkip(-15)}
+              className="flex flex-col items-center justify-center w-12 h-10 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
+              title="后退15秒"
+            >
+              <span className="text-xs font-bold">-15</span>
+              <span className="text-[9px] mt-0.5">秒</span>
+            </button>
 
-          {/* Skip Forward */}
-          <button
-            onClick={() => handleSkip(30)}
-            className="p-2 text-gray-300 hover:text-white transition-colors"
-          >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.933 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.333-4zM19.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4z" />
-            </svg>
-          </button>
+            {/* Play/Pause */}
+            <button
+              onClick={togglePlay}
+              disabled={isLoading || !!error}
+              className={`w-14 h-14 rounded-full flex items-center justify-center transition-all mx-2
+                ${isLoading || error 
+                  ? 'bg-gray-600 cursor-not-allowed' 
+                  : isPlaying 
+                    ? 'bg-indigo-500 playing' 
+                    : 'bg-indigo-500 hover:bg-indigo-400'}`}
+            >
+              {isLoading ? (
+                <svg className="w-6 h-6 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+              ) : isPlaying ? (
+                <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              )}
+            </button>
+
+            {/* 快进30秒 */}
+            <button
+              onClick={() => handleSkip(30)}
+              className="flex flex-col items-center justify-center w-12 h-10 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
+              title="快进30秒"
+            >
+              <span className="text-xs font-bold">+30</span>
+              <span className="text-[9px] mt-0.5">秒</span>
+            </button>
+
+            {/* 下一章 */}
+            <button
+              onClick={onNext}
+              disabled={!hasNext}
+              className={`flex flex-col items-center justify-center w-12 h-10 rounded-lg transition-colors
+                ${hasNext ? 'text-gray-300 hover:text-white hover:bg-white/10' : 'text-gray-600 cursor-not-allowed'}`}
+              title="下一章"
+            >
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+              </svg>
+              <span className="text-[9px] mt-0.5">下一章</span>
+            </button>
+          </div>
+
+          {/* Placeholder for balance */}
+          <div className="w-12" />
         </div>
 
         {/* Audio Element */}
@@ -275,7 +401,7 @@ export default function Player({
           onTimeUpdate={handleTimeUpdate}
           onLoadedMetadata={handleLoadedMetadata}
           onError={handleError}
-          onEnded={() => setIsPlaying(false)}
+          onEnded={handleEnded}
           onPlay={() => setIsPlaying(true)}
           onPause={() => setIsPlaying(false)}
           onCanPlay={() => setIsLoading(false)}

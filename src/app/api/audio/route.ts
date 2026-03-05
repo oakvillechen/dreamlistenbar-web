@@ -29,7 +29,10 @@ export async function GET(request: NextRequest) {
     try {
       const backendResponse = await axios.get(`${backendUrl}/api/audio`, {
         params: { url: targetUrl },
-        timeout: 20000
+        timeout: 30000,
+        headers: {
+          'ngrok-skip-browser-warning': 'true'
+        }
       });
 
       if (backendResponse.data.success && backendResponse.data.audio_url) {

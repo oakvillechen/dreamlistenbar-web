@@ -2,18 +2,19 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { PlayerProvider } from "@/lib/PlayerContext";
+import { UserProvider } from "@/lib/UserContext";
 import GlobalPlayer from "@/components/GlobalPlayer";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "悦听吧 - DreamListenBar",
-  description: "有声小说播放应用 - Glassmorphism UI设计",
+  title: "DreamListenBar - 有声小说",
+  description: "DreamListenBar - 有声小说播放应用",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "悦听吧",
+    title: "DreamListenBar",
   },
 };
 
@@ -39,10 +40,12 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body className={inter.className}>
-        <PlayerProvider>
-          {children}
-          <GlobalPlayer />
-        </PlayerProvider>
+        <UserProvider>
+          <PlayerProvider>
+            {children}
+            <GlobalPlayer />
+          </PlayerProvider>
+        </UserProvider>
       </body>
     </html>
   );
