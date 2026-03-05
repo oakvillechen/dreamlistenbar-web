@@ -36,6 +36,14 @@ export default function Player({
       setError(null);
       audioRef.current.src = audioUrl;
       audioRef.current.load();
+      
+      // Auto play when url changes
+      audioRef.current.play().then(() => {
+        setIsPlaying(true);
+      }).catch(err => {
+        console.error('Auto-play blocked by browser:', err);
+        setIsPlaying(false);
+      });
     }
   }, [audioUrl]);
 
