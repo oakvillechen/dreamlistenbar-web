@@ -34,8 +34,13 @@ export default function Player({
     if (audioRef.current && audioUrl) {
       setIsLoading(true);
       setError(null);
-      audioRef.current.src = audioUrl;
-      audioRef.current.load();
+      
+      const currentSrc = audioRef.current.currentSrc || audioRef.current.src;
+      // Skip if the url is exactly the same to prevent loop
+      if (currentSrc !== audioUrl) {
+        audioRef.current.src = audioUrl;
+        audioRef.current.load();
+      }
       
       // Auto play when url changes
       audioRef.current.play().then(() => {
