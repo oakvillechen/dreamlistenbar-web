@@ -4,7 +4,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 
 // Supabase 配置
 const SUPABASE_URL = 'https://cwpxcqutrzzkuyaeweir.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_3pJBOBlAUHs53YrHBMNV5Q_fulqiYbv';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN3cHhjcXV0cnp6a3V5YWV3ZWlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3OTcwNTgsImV4cCI6MjA4ODM3MzA1OH0.PvpM1pEk_B1K5xueePctLlxhpwBm6GGaLhhttwF-334';
 
 // 后端 URL（本地 ngrok 或 Render）
 const getBackendUrl = () => {
