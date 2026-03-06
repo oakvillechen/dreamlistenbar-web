@@ -1,21 +1,23 @@
 {
-  "name": "悦听吧",
-  "short_name": "悦听吧",
-  "description": "移动端友好的有声小说播放应用",
+  "name": "DreamListenBar",
+  "short_name": "DreamListen",
+  "description": "免费有声小说播放应用，支持离线收听、定时关闭、跨设备同步",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f0f1a",
-  "theme_color": "#0f0f1a",
+  "theme_color": "#6366f1",
   "icons": [
     {
       "src": "/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
