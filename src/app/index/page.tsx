@@ -33,7 +33,7 @@ export default function IndexPage() {
         setMessage('❌ 添加失败: ' + data.error);
       }
     } catch (err) {
-      setMessage('❌ 错误: ' + err.message);
+      setMessage('❌ 错误: ' + (err instanceof Error ? err.message : String(err)));
     }
   };
 
@@ -63,7 +63,7 @@ export default function IndexPage() {
         setMessage('❌ 导入失败: ' + result.error);
       }
     } catch (err) {
-      setMessage('❌ JSON 格式错误: ' + err.message);
+      setMessage('❌ JSON 格式错误: ' + (err instanceof Error ? err.message : String(err)));
     }
   };
 
@@ -75,7 +75,7 @@ export default function IndexPage() {
       setCount(data.count || 0);
       setMessage(`📋 索引共 ${data.count} 章`);
     } catch (err) {
-      setMessage('❌ 查询失败: ' + err.message);
+      setMessage('❌ 查询失败: ' + (err instanceof Error ? err.message : String(err)));
     }
   };
 
