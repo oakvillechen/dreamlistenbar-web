@@ -2,6 +2,19 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 
+// Supabase 配置
+const SUPABASE_URL = 'https://cwpxcqutrzzkuyaeweir.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_3pJBOBlAUHs53YrHBMNV5Q_fulqiYbv';
+
+// 后端 URL（本地 ngrok 或 Render）
+const getBackendUrl = () => {
+  if (typeof window !== 'undefined') {
+    // 优先使用环境变量，否则使用 ngrok
+    return process.env.NEXT_PUBLIC_BACKEND_URL || 'https://unabasing-maximus-consciously.ngrok-free.dev';
+  }
+  return 'https://unabasing-maximus-consciously.ngrok-free.dev';
+};
+
 interface UserData {
   email: string;
   history: HistoryItem[];
@@ -16,8 +29,8 @@ export interface HistoryItem {
   tingId: string;
   chapterIndex: number;
   timestamp: number;
-  progress: number; // 播放进度百分比
-  currentTime: number; // 当前播放时间（秒）
+  progress: number;
+  currentTime: number;
 }
 
 export interface FavoriteItem {
@@ -34,12 +47,13 @@ interface UserContextType {
   isLoggedIn: boolean;
   history: HistoryItem[];
   favorites: FavoriteItem[];
-  login: (email: string) => void;
+  isLoading: boolean;
+  login: (email: string) => Promise<void>;
   logout: () => void;
-  addHistory: (item: Omit<HistoryItem, 'timestamp'>) => void;
+  addHistory: (item: Omit<HistoryItem, 'timestamp'>) => Promise<void>;
   updateHistoryProgress: (tingId: string, currentTime: number, progress: number) => void;
-  addFavorite: (item: Omit<FavoriteItem, 'timestamp'>) => void;
-  removeFavorite: (bookId: string) => void;
+  addFavorite: (item: Omit<FavoriteItem, 'timestamp'>) => Promise<void>;
+  removeFavorite: (bookId: string) => Promise<void>;
   isFavorite: (bookId: string) => boolean;
 }
 
@@ -54,20 +68,54 @@ export function UserProvider({ children }: { children: ReactNode }) {
     favorites: [],
   });
   const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // 从 localStorage 加载数据
+  // 从 localStorage 加载本地数据
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         setUserData(parsed);
+        
+        // 如果有 email，从后端同步
+        if (parsed.email) {
+          syncFromBackend(parsed.email);
+        }
       }
     } catch (e) {
       console.error('Failed to load user data:', e);
     }
     setIsLoaded(true);
   }, []);
+
+  // 从后端同步数据
+  const syncFromBackend = async (email: string) => {
+    try {
+      const backendUrl = getBackendUrl();
+      const res = await fetch(`${backendUrl}/api/user/${encodeURIComponent(email)}`, {
+        headers: { 'ngrok-skip-browser-warning': 'true' }
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        setUserData(prev => ({
+          ...prev,
+          history: data.history || [],
+          favorites: data.favorites || [],
+        }));
+        
+        // 更新 localStorage
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          email,
+          history: data.history || [],
+          favorites: data.favorites || [],
+        }));
+      }
+    } catch (e) {
+      console.error('Failed to sync from backend:', e);
+    }
+  };
 
   // 保存到 localStorage
   useEffect(() => {
@@ -80,8 +128,18 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   }, [userData, isLoaded]);
 
-  const login = (email: string) => {
-    setUserData(prev => ({ ...prev, email }));
+  const login = async (email: string) => {
+    setIsLoading(true);
+    try {
+      // 先保存 email
+      setUserData(prev => ({ ...prev, email }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...userData, email }));
+      
+      // 从后端获取数据
+      await syncFromBackend(email);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const logout = () => {
@@ -89,14 +147,32 @@ export function UserProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(STORAGE_KEY);
   };
 
-  const addHistory = (item: Omit<HistoryItem, 'timestamp'>) => {
+  const addHistory = async (item: Omit<HistoryItem, 'timestamp'>) => {
+    const historyItem: HistoryItem = { ...item, timestamp: Date.now() };
+    
+    // 本地更新
     setUserData(prev => {
-      // 移除已有的同一章记录
       const filtered = prev.history.filter(h => h.tingId !== item.tingId);
-      // 添加到最前面
-      const newHistory = [{ ...item, timestamp: Date.now() }, ...filtered].slice(0, 100); // 最多保留100条
+      const newHistory = [historyItem, ...filtered].slice(0, 100);
       return { ...prev, history: newHistory };
     });
+
+    // 同步到后端
+    if (userData.email) {
+      try {
+        const backendUrl = getBackendUrl();
+        await fetch(`${backendUrl}/api/user/${encodeURIComponent(userData.email)}/history`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
+          },
+          body: JSON.stringify(historyItem),
+        });
+      } catch (e) {
+        console.error('Failed to sync history:', e);
+      }
+    }
   };
 
   const updateHistoryProgress = (tingId: string, currentTime: number, progress: number) => {
@@ -108,18 +184,52 @@ export function UserProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const addFavorite = (item: Omit<FavoriteItem, 'timestamp'>) => {
+  const addFavorite = async (item: Omit<FavoriteItem, 'timestamp'>) => {
+    const favoriteItem: FavoriteItem = { ...item, timestamp: Date.now() };
+    
+    // 本地更新
     setUserData(prev => {
       if (prev.favorites.some(f => f.bookId === item.bookId)) return prev;
-      return { ...prev, favorites: [{ ...item, timestamp: Date.now() }, ...prev.favorites] };
+      return { ...prev, favorites: [favoriteItem, ...prev.favorites] };
     });
+
+    // 同步到后端
+    if (userData.email) {
+      try {
+        const backendUrl = getBackendUrl();
+        await fetch(`${backendUrl}/api/user/${encodeURIComponent(userData.email)}/favorites`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'ngrok-skip-browser-warning': 'true'
+          },
+          body: JSON.stringify(favoriteItem),
+        });
+      } catch (e) {
+        console.error('Failed to sync favorite:', e);
+      }
+    }
   };
 
-  const removeFavorite = (bookId: string) => {
+  const removeFavorite = async (bookId: string) => {
+    // 本地更新
     setUserData(prev => ({
       ...prev,
       favorites: prev.favorites.filter(f => f.bookId !== bookId),
     }));
+
+    // 同步到后端
+    if (userData.email) {
+      try {
+        const backendUrl = getBackendUrl();
+        await fetch(`${backendUrl}/api/user/${encodeURIComponent(userData.email)}/favorites/${bookId}`, {
+          method: 'DELETE',
+          headers: { 'ngrok-skip-browser-warning': 'true' }
+        });
+      } catch (e) {
+        console.error('Failed to remove favorite:', e);
+      }
+    }
   };
 
   const isFavorite = (bookId: string) => {
@@ -132,6 +242,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
       isLoggedIn: !!userData.email,
       history: userData.history,
       favorites: userData.favorites,
+      isLoading,
       login,
       logout,
       addHistory,
