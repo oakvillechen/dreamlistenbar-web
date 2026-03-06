@@ -6,14 +6,9 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 const SUPABASE_URL = 'https://cwpxcqutrzzkuyaeweir.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN3cHhjcXV0cnp6a3V5YWV3ZWlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3OTcwNTgsImV4cCI6MjA4ODM3MzA1OH0.PvpM1pEk_B1K5xueePctLlxhpwBm6GGaLhhttwF-334';
 
-// 后端 URL（本地 ngrok 或 Render）
-const getBackendUrl = () => {
-  if (typeof window !== 'undefined') {
-    // 优先使用环境变量，否则使用 ngrok
-    return process.env.NEXT_PUBLIC_BACKEND_URL || 'https://unabasing-maximus-consciously.ngrok-free.dev';
-  }
-  return 'https://unabasing-maximus-consciously.ngrok-free.dev';
-};
+// 后端 URL - 用户数据用 Render，音频用本地 ngrok
+const RENDER_URL = 'https://dreamlistenbar-backend.onrender.com';
+const getBackendUrl = () => RENDER_URL;
 
 interface UserData {
   email: string;

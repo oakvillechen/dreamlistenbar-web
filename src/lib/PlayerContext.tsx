@@ -24,13 +24,9 @@ interface PlayerContextType {
 
 const PlayerContext = createContext<PlayerContextType | undefined>(undefined);
 
-// 后端 URL
-const getBackendUrl = () => {
-  if (typeof window !== 'undefined') {
-    return process.env.NEXT_PUBLIC_BACKEND_URL || 'https://unabasing-maximus-consciously.ngrok-free.dev';
-  }
-  return 'https://unabasing-maximus-consciously.ngrok-free.dev';
-};
+// 后端 URL - 用户数据用 Render，音频用本地 ngrok
+const RENDER_URL = 'https://dreamlistenbar-backend.onrender.com';
+const getBackendUrl = () => RENDER_URL;
 
 // 导出给其他组件使用
 export { getBackendUrl };
