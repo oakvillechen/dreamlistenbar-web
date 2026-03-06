@@ -12,6 +12,7 @@ interface PlayerState {
   bookTitle: string;
   chapterIndex: number;
   chapters: { tingId: string; title: string }[];
+  totalChapters: number;
 }
 
 interface PlayerContextType {
@@ -41,10 +42,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     bookTitle: '',
     chapterIndex: -1,
     chapters: [],
+    totalChapters: 0,
   });
 
   const play = useCallback((audioUrl: string, title: string, cover: string, tingId: string, bookId: string, bookTitle: string, chapterIndex: number, chapters: { tingId: string; title: string }[]) => {
-    setState({ audioUrl, title, cover, tingId, bookId, bookTitle, chapterIndex, chapters });
+    setState({ audioUrl, title, cover, tingId, bookId, bookTitle, chapterIndex, chapters, totalChapters: chapters.length });
 
     // 记录到历史 - 直接写入 localStorage
     try {

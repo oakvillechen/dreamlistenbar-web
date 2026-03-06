@@ -13,6 +13,10 @@ export default function GlobalPlayer() {
       audioUrl={state.audioUrl}
       title={state.title}
       cover={state.cover}
+      bookId={state.bookId}
+      bookTitle={state.bookTitle}
+      chapterIndex={state.chapterIndex}
+      totalChapters={state.totalChapters}
       onClose={close}
       onNext={playNext}
       onPrev={playPrev}

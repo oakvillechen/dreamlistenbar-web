@@ -1,12 +1,17 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { proxyCoverUrl } from '@/lib/proxy';
 
 interface PlayerProps {
   audioUrl: string | null;
   title: string;
   cover: string;
+  bookId?: string | null;
+  bookTitle?: string;
+  chapterIndex?: number;
+  totalChapters?: number;
   onClose: () => void;
   onPrev?: () => void;
   onNext?: () => void;
@@ -18,12 +23,17 @@ export default function Player({
   audioUrl,
   title,
   cover,
+  bookId,
+  bookTitle,
+  chapterIndex = -1,
+  totalChapters = 0,
   onClose,
   onPrev,
   onNext,
   hasPrev = false,
   hasNext = false,
 }: PlayerProps) {
+  const router = useRouter();
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -68,7 +78,6 @@ export default function Player({
   }, []);
 
   const startSleepTimer = (minutes: number) => {
-    // 清除已有定时器
     if (sleepIntervalRef.current) {
       clearInterval(sleepIntervalRef.current);
     }
@@ -83,7 +92,6 @@ export default function Player({
       setSleepRemaining(remaining);
       
       if (remaining <= 0) {
-        // 时间到，暂停播放
         if (audioRef.current) {
           audioRef.current.pause();
           setIsPlaying(false);
@@ -181,9 +189,15 @@ export default function Player({
 
   const handleEnded = () => {
     setIsPlaying(false);
-    // 自动播放下一章
     if (hasNext && onNext) {
       onNext();
+    }
+  };
+
+  const goToBook = () => {
+    if (bookId) {
+      onClose();
+      router.push(`/book/${bookId}`);
     }
   };
 
@@ -193,9 +207,12 @@ export default function Player({
     <div className="fixed inset-x-0 bottom-0 z-50 safe-bottom">
       {/* Player Card */}
       <div className="glass-card rounded-t-3xl p-4 mx-2 border-t border-white/10">
-        {/* Track Info */}
+        {/* Track Info - 可点击跳转 */}
         <div className="flex items-center gap-3 mb-3">
-          <div className="relative w-12 h-12 rounded-xl overflow-hidden bg-white/10 shrink-0">
+          <div 
+            className="relative w-12 h-12 rounded-xl overflow-hidden bg-white/10 shrink-0 cursor-pointer"
+            onClick={goToBook}
+          >
             {cover ? (
               <img
                 src={proxyCoverUrl(cover)}
@@ -213,14 +230,26 @@ export default function Player({
               </div>
             )}
           </div>
-          <div className="flex-1 min-w-0">
+          <div 
+            className="flex-1 min-w-0 cursor-pointer"
+            onClick={goToBook}
+          >
             <p className="text-sm font-medium text-white truncate">{title}</p>
-            <p className="text-xs text-gray-400 mt-0.5">
-              {isLoading ? '加载中...' : error || `${formatTime(currentTime)} / ${formatTime(duration)}`}
+            <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1">
+              {bookTitle && <span className="truncate max-w-[120px]">{bookTitle}</span>}
+              {totalChapters > 0 && (
+                <>
+                  <span>·</span>
+                  <span className="text-indigo-400">{chapterIndex + 1}/{totalChapters}</span>
+                </>
+              )}
+              {!bookTitle && !totalChapters && (
+                isLoading ? '加载中...' : error || `${formatTime(currentTime)} / ${formatTime(duration)}`
+              )}
             </p>
           </div>
           
-          {/* Sleep Timer Button */}
+          {/* Sleep Timer */}
           <button
             onClick={() => setShowSleepMenu(!showSleepMenu)}
             className={`p-2 transition-colors relative ${sleepTimer ? 'text-indigo-400' : 'text-gray-400 hover:text-white'}`}
@@ -236,6 +265,7 @@ export default function Player({
             )}
           </button>
 
+          {/* Close */}
           <button
             onClick={onClose}
             className="p-2 text-gray-400 hover:text-white transition-colors"
@@ -303,96 +333,98 @@ export default function Player({
           </div>
         </div>
 
-        {/* Controls - 重新设计，清晰区分快进和切集 */}
-        <div className="flex items-center justify-between">
+        {/* Controls - 改进布局 */}
+        <div className="flex items-center justify-center gap-2">
           {/* Speed */}
           <button
             onClick={changeSpeed}
-            className="w-12 h-10 flex items-center justify-center text-xs font-bold text-gray-300 hover:text-white transition-colors rounded-lg bg-white/5"
+            className="w-14 h-12 flex flex-col items-center justify-center text-xs font-bold text-gray-300 hover:text-white transition-colors rounded-xl bg-white/5"
           >
-            {speed}x
+            <span>{speed}x</span>
+            <span className="text-[9px] text-gray-500">速度</span>
           </button>
 
-          {/* Main Controls */}
-          <div className="flex items-center gap-1">
-            {/* 上一章 */}
-            <button
-              onClick={onPrev}
-              disabled={!hasPrev}
-              className={`flex flex-col items-center justify-center w-12 h-10 rounded-lg transition-colors
-                ${hasPrev ? 'text-gray-300 hover:text-white hover:bg-white/10' : 'text-gray-600 cursor-not-allowed'}`}
-              title="上一章"
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
+          {/* 上一章 */}
+          <button
+            onClick={onPrev}
+            disabled={!hasPrev}
+            className={`w-14 h-12 flex flex-col items-center justify-center rounded-xl transition-all
+              ${hasPrev ? 'text-white bg-white/10 hover:bg-white/20 active:scale-95' : 'text-gray-600 bg-white/5 cursor-not-allowed'}`}
+          >
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M6 6h2v12H6zm3.5 6l8.5 6V6z" />
+            </svg>
+            <span className="text-[9px] mt-0.5">上一章</span>
+          </button>
+
+          {/* 快退15秒 */}
+          <button
+            onClick={() => handleSkip(-15)}
+            className="w-14 h-12 flex flex-col items-center justify-center rounded-xl text-gray-300 hover:text-white hover:bg-white/10 transition-all active:scale-95"
+          >
+            <span className="text-sm font-bold">-15</span>
+            <span className="text-[9px] text-gray-500">秒</span>
+          </button>
+
+          {/* Play/Pause */}
+          <button
+            onClick={togglePlay}
+            disabled={isLoading || !!error}
+            className={`w-16 h-16 rounded-full flex items-center justify-center transition-all
+              ${isLoading || error 
+                ? 'bg-gray-600 cursor-not-allowed' 
+                : isPlaying 
+                  ? 'bg-indigo-500 playing' 
+                  : 'bg-indigo-500 hover:bg-indigo-400 active:scale-95'}`}
+          >
+            {isLoading ? (
+              <svg className="w-7 h-7 animate-spin text-white" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
-              <span className="text-[9px] mt-0.5">上一章</span>
-            </button>
-
-            {/* 快退15秒 */}
-            <button
-              onClick={() => handleSkip(-15)}
-              className="flex flex-col items-center justify-center w-12 h-10 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
-              title="后退15秒"
-            >
-              <span className="text-xs font-bold">-15</span>
-              <span className="text-[9px] mt-0.5">秒</span>
-            </button>
-
-            {/* Play/Pause */}
-            <button
-              onClick={togglePlay}
-              disabled={isLoading || !!error}
-              className={`w-14 h-14 rounded-full flex items-center justify-center transition-all mx-2
-                ${isLoading || error 
-                  ? 'bg-gray-600 cursor-not-allowed' 
-                  : isPlaying 
-                    ? 'bg-indigo-500 playing' 
-                    : 'bg-indigo-500 hover:bg-indigo-400'}`}
-            >
-              {isLoading ? (
-                <svg className="w-6 h-6 animate-spin text-white" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-              ) : isPlaying ? (
-                <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-                </svg>
-              ) : (
-                <svg className="w-6 h-6 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z" />
-                </svg>
-              )}
-            </button>
-
-            {/* 快进30秒 */}
-            <button
-              onClick={() => handleSkip(30)}
-              className="flex flex-col items-center justify-center w-12 h-10 rounded-lg text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
-              title="快进30秒"
-            >
-              <span className="text-xs font-bold">+30</span>
-              <span className="text-[9px] mt-0.5">秒</span>
-            </button>
-
-            {/* 下一章 */}
-            <button
-              onClick={onNext}
-              disabled={!hasNext}
-              className={`flex flex-col items-center justify-center w-12 h-10 rounded-lg transition-colors
-                ${hasNext ? 'text-gray-300 hover:text-white hover:bg-white/10' : 'text-gray-600 cursor-not-allowed'}`}
-              title="下一章"
-            >
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+            ) : isPlaying ? (
+              <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
               </svg>
-              <span className="text-[9px] mt-0.5">下一章</span>
-            </button>
-          </div>
+            ) : (
+              <svg className="w-7 h-7 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z" />
+              </svg>
+            )}
+          </button>
 
-          {/* Placeholder for balance */}
-          <div className="w-12" />
+          {/* 快进30秒 */}
+          <button
+            onClick={() => handleSkip(30)}
+            className="w-14 h-12 flex flex-col items-center justify-center rounded-xl text-gray-300 hover:text-white hover:bg-white/10 transition-all active:scale-95"
+          >
+            <span className="text-sm font-bold">+30</span>
+            <span className="text-[9px] text-gray-500">秒</span>
+          </button>
+
+          {/* 下一章 */}
+          <button
+            onClick={onNext}
+            disabled={!hasNext}
+            className={`w-14 h-12 flex flex-col items-center justify-center rounded-xl transition-all
+              ${hasNext ? 'text-white bg-white/10 hover:bg-white/20 active:scale-95' : 'text-gray-600 bg-white/5 cursor-not-allowed'}`}
+          >
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+            </svg>
+            <span className="text-[9px] mt-0.5">下一章</span>
+          </button>
+
+          {/* 返回列表 */}
+          <button
+            onClick={goToBook}
+            className="w-14 h-12 flex flex-col items-center justify-center rounded-xl text-gray-300 hover:text-white hover:bg-white/10 transition-all active:scale-95"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+            </svg>
+            <span className="text-[9px] text-gray-500">列表</span>
+          </button>
         </div>
 
         {/* Audio Element */}
