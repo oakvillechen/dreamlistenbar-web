@@ -1,12 +1,12 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 
 // Supabase 配置
 const SUPABASE_URL = 'https://cwpxcqutrzzkuyaeweir.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN3cHhjcXV0cnp6a3V5YWV3ZWlyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI3OTcwNTgsImV4cCI6MjA4ODM3MzA1OH0.PvpM1pEk_B1K5xueePctLlxhpwBm6GGaLhhttwF-334';
 
-// 后端 URL - 用户数据用 Render，音频用本地 ngrok
+// 后端 URL
 const RENDER_URL = 'https://dreamlistenbar-backend.onrender.com';
 const getBackendUrl = () => RENDER_URL;
 
@@ -66,6 +66,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
   });
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const userDataRef = useRef(userData);
+  
+  // 保持 ref 同步
+  useEffect(() => {
+    userDataRef.current = userData;
+  }, [userData]);
 
   // 从 localStorage 加载本地数据
   useEffect(() => {
@@ -75,7 +81,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         const parsed = JSON.parse(saved);
         setUserData(parsed);
         
-        // 如果有 email，从后端同步
+        // 如果有 email，从后端同步（仅首次加载）
         if (parsed.email) {
           syncFromBackend(parsed.email);
         }
@@ -128,11 +134,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
   const login = async (email: string) => {
     setIsLoading(true);
     try {
-      // 先保存 email
       setUserData(prev => ({ ...prev, email }));
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...userData, email }));
-      
-      // 从后端获取数据
       await syncFromBackend(email);
     } finally {
       setIsLoading(false);
@@ -155,10 +158,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
     });
 
     // 同步到后端
-    if (userData.email) {
+    const email = userDataRef.current.email;
+    if (email) {
       try {
         const backendUrl = getBackendUrl();
-        await fetch(`${backendUrl}/api/user/${encodeURIComponent(userData.email)}/history`, {
+        await fetch(`${backendUrl}/api/user/${encodeURIComponent(email)}/history`, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -191,10 +195,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
     });
 
     // 同步到后端
-    if (userData.email) {
+    const email = userDataRef.current.email;
+    if (email) {
       try {
         const backendUrl = getBackendUrl();
-        await fetch(`${backendUrl}/api/user/${encodeURIComponent(userData.email)}/favorites`, {
+        await fetch(`${backendUrl}/api/user/${encodeURIComponent(email)}/favorites`, {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
@@ -216,10 +221,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }));
 
     // 同步到后端
-    if (userData.email) {
+    const email = userDataRef.current.email;
+    if (email) {
       try {
         const backendUrl = getBackendUrl();
-        await fetch(`${backendUrl}/api/user/${encodeURIComponent(userData.email)}/favorites/${bookId}`, {
+        await fetch(`${backendUrl}/api/user/${encodeURIComponent(email)}/favorites/${bookId}`, {
           method: 'DELETE',
           headers: { 'ngrok-skip-browser-warning': 'true' }
         });
@@ -237,10 +243,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }));
 
     // 同步到后端
-    if (userData.email) {
+    const email = userDataRef.current.email;
+    if (email) {
       try {
         const backendUrl = getBackendUrl();
-        await fetch(`${backendUrl}/api/user/${encodeURIComponent(userData.email)}/history/${tingId}`, {
+        await fetch(`${backendUrl}/api/user/${encodeURIComponent(email)}/history/${tingId}`, {
           method: 'DELETE',
           headers: { 'ngrok-skip-browser-warning': 'true' }
         });
@@ -258,10 +265,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }));
 
     // 同步到后端
-    if (userData.email) {
+    const email = userDataRef.current.email;
+    if (email) {
       try {
         const backendUrl = getBackendUrl();
-        await fetch(`${backendUrl}/api/user/${encodeURIComponent(userData.email)}/history`, {
+        await fetch(`${backendUrl}/api/user/${encodeURIComponent(email)}/history`, {
           method: 'DELETE',
           headers: { 'ngrok-skip-browser-warning': 'true' }
         });
