@@ -8,10 +8,11 @@ import { proxyCoverUrl, proxyAudioUrl } from '@/lib/proxy';
 import Link from 'next/link';
 
 export default function MyPage() {
-  const { email, isLoggedIn, history, favorites, login, logout, removeFavorite } = useUser();
+  const { email, isLoggedIn, history, favorites, login, logout, removeHistory, clearHistory, removeFavorite } = useUser();
   const { play } = usePlayer();
   const [emailInput, setEmailInput] = useState('');
   const [activeTab, setActiveTab] = useState<'history' | 'favorites'>('history');
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,6 +32,11 @@ export default function MyPage() {
     } catch (err) {
       console.error('Failed to play history item:', err);
     }
+  };
+
+  const handleClearHistory = async () => {
+    await clearHistory();
+    setShowClearConfirm(false);
   };
 
   return (
@@ -121,46 +127,84 @@ export default function MyPage() {
                 <p className="text-sm mt-2">去首页找一本好书吧</p>
               </div>
             ) : (
-              history.map((item) => (
-                <div
-                  key={`${item.tingId}-${item.timestamp}`}
-                  className="glass-card p-3 hover:bg-white/10 transition-all cursor-pointer"
-                  onClick={() => handlePlayHistory(item)}
-                >
-                  <div className="flex gap-3 items-center">
-                    <div className="w-12 h-16 rounded-lg overflow-hidden bg-white/5 shrink-0">
-                      {item.cover ? (
-                        <img
-                          src={proxyCoverUrl(item.cover)}
-                          alt={item.bookTitle}
-                          className="w-full h-full object-cover"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-xl">📚</div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-white truncate">{item.bookTitle}</p>
-                      <p className="text-xs text-gray-400 truncate mt-0.5">{item.chapterTitle}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-indigo-500 rounded-full" 
-                            style={{ width: `${item.progress || 0}%` }} 
-                          />
-                        </div>
-                        <span className="text-[10px] text-gray-500">
-                          {new Date(item.timestamp).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                    </div>
-                    <svg className="w-5 h-5 text-gray-400 shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M8 5v14l11-7z" />
+              <>
+                {/* Clear All Button */}
+                <div className="flex justify-end mb-2">
+                  <button
+                    onClick={() => setShowClearConfirm(true)}
+                    className="text-xs text-gray-400 hover:text-red-400 transition-colors flex items-center gap-1"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
-                  </div>
+                    清除全部
+                  </button>
                 </div>
-              ))
+                
+                {history.map((item) => (
+                  <div
+                    key={`${item.tingId}-${item.timestamp}`}
+                    className="glass-card p-3 hover:bg-white/10 transition-all"
+                  >
+                    <div className="flex gap-3 items-center">
+                      <div 
+                        className="w-12 h-16 rounded-lg overflow-hidden bg-white/5 shrink-0 cursor-pointer"
+                        onClick={() => handlePlayHistory(item)}
+                      >
+                        {item.cover ? (
+                          <img
+                            src={proxyCoverUrl(item.cover)}
+                            alt={item.bookTitle}
+                            className="w-full h-full object-cover"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-xl">📚</div>
+                        )}
+                      </div>
+                      <div 
+                        className="flex-1 min-w-0 cursor-pointer"
+                        onClick={() => handlePlayHistory(item)}
+                      >
+                        <p className="text-sm font-medium text-white truncate">{item.bookTitle}</p>
+                        <p className="text-xs text-gray-400 truncate mt-0.5">{item.chapterTitle}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className="flex-1 h-1 bg-white/10 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-indigo-500 rounded-full" 
+                              style={{ width: `${item.progress || 0}%` }} 
+                            />
+                          </div>
+                          <span className="text-[10px] text-gray-500">
+                            {new Date(item.timestamp).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      </div>
+                      {/* Play Button */}
+                      <button
+                        onClick={() => handlePlayHistory(item)}
+                        className="p-2 text-indigo-400 hover:text-indigo-300 transition-colors shrink-0"
+                      >
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M8 5v14l11-7z" />
+                        </svg>
+                      </button>
+                      {/* Delete Button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeHistory(item.tingId);
+                        }}
+                        className="p-2 text-gray-400 hover:text-red-400 transition-colors shrink-0"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </>
             )}
           </div>
         )}
@@ -172,7 +216,7 @@ export default function MyPage() {
               <div className="text-center py-12 text-gray-400">
                 <p className="text-4xl mb-4">❤️</p>
                 <p>暂无收藏</p>
-                <p className="text-sm mt-2">长按书籍卡片添加收藏</p>
+                <p className="text-sm mt-2">在书籍详情页点击收藏按钮</p>
               </div>
             ) : (
               favorites.map((item) => (
@@ -218,6 +262,30 @@ export default function MyPage() {
           </div>
         )}
       </main>
+
+      {/* Clear History Confirm Modal */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+          <div className="glass-card p-6 max-w-sm w-full">
+            <h3 className="text-lg font-medium text-white mb-2">清除播放历史？</h3>
+            <p className="text-sm text-gray-400 mb-4">此操作无法撤销，所有播放记录将被删除。</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                className="flex-1 py-2.5 rounded-xl bg-white/5 text-gray-300 text-sm hover:bg-white/10 transition-all"
+              >
+                取消
+              </button>
+              <button
+                onClick={handleClearHistory}
+                className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm hover:bg-red-400 transition-all"
+              >
+                确认清除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, use, useRef } from 'react';
 import Header from '@/components/Header';
 import { usePlayer } from '@/lib/PlayerContext';
 import { useUser } from '@/lib/UserContext';
@@ -16,10 +16,18 @@ export default function BookPage({ params }: { params: Promise<{ id: string }> }
   const [loading, setLoading] = useState(true);
   const [currentTab, setCurrentTab] = useState('0');
   const [fetchingAudioId, setFetchingAudioId] = useState<string | null>(null);
+  const currentChapterRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     fetchBookDetail(id, currentTab);
   }, [id, currentTab]);
+
+  // 滚动到当前播放章节
+  useEffect(() => {
+    if (currentChapterRef.current && playerState.tingId) {
+      currentChapterRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [playerState.tingId, data?.chapters]);
 
   const fetchBookDetail = async (bookId: string, page: string) => {
     setLoading(true);
@@ -174,6 +182,7 @@ export default function BookPage({ params }: { params: Promise<{ id: string }> }
             return (
               <button
                 key={chapter.tingId}
+                ref={isCurrent ? currentChapterRef : null}
                 onClick={() => handlePlayChapter(chapter, index)}
                 className={`flex items-center gap-3 p-3 rounded-xl transition-all text-left
                   ${isCurrent 

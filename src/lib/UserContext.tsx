@@ -47,6 +47,8 @@ interface UserContextType {
   logout: () => void;
   addHistory: (item: Omit<HistoryItem, 'timestamp'>) => Promise<void>;
   updateHistoryProgress: (tingId: string, currentTime: number, progress: number) => void;
+  removeHistory: (tingId: string) => Promise<void>;
+  clearHistory: () => Promise<void>;
   addFavorite: (item: Omit<FavoriteItem, 'timestamp'>) => Promise<void>;
   removeFavorite: (bookId: string) => Promise<void>;
   isFavorite: (bookId: string) => boolean;
@@ -227,6 +229,48 @@ export function UserProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const removeHistory = async (tingId: string) => {
+    // 本地更新
+    setUserData(prev => ({
+      ...prev,
+      history: prev.history.filter(h => h.tingId !== tingId),
+    }));
+
+    // 同步到后端
+    if (userData.email) {
+      try {
+        const backendUrl = getBackendUrl();
+        await fetch(`${backendUrl}/api/user/${encodeURIComponent(userData.email)}/history/${tingId}`, {
+          method: 'DELETE',
+          headers: { 'ngrok-skip-browser-warning': 'true' }
+        });
+      } catch (e) {
+        console.error('Failed to remove history:', e);
+      }
+    }
+  };
+
+  const clearHistory = async () => {
+    // 本地更新
+    setUserData(prev => ({
+      ...prev,
+      history: [],
+    }));
+
+    // 同步到后端
+    if (userData.email) {
+      try {
+        const backendUrl = getBackendUrl();
+        await fetch(`${backendUrl}/api/user/${encodeURIComponent(userData.email)}/history`, {
+          method: 'DELETE',
+          headers: { 'ngrok-skip-browser-warning': 'true' }
+        });
+      } catch (e) {
+        console.error('Failed to clear history:', e);
+      }
+    }
+  };
+
   const isFavorite = (bookId: string) => {
     return userData.favorites.some(f => f.bookId === bookId);
   };
@@ -242,6 +286,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
       logout,
       addHistory,
       updateHistoryProgress,
+      removeHistory,
+      clearHistory,
       addFavorite,
       removeFavorite,
       isFavorite,
