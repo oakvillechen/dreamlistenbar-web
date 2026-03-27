@@ -65,10 +65,16 @@ export default function BookPage({ params }: { params: Promise<{ id: string }> }
           data?.chapters.map(c => ({ tingId: c.tingId, title: c.title })) || []
         );
       } else {
-        alert('无法解析音频地址，请稍后再试');
+        // 音频不可用时，使用 iframe 嵌入原站播放器
+        const iframeUrl = `http://www.yuetingba.cn/book/Ting/${chapter.tingId}`;
+        const useIframe = confirm(`该章节音频暂时无法解析。\n\n点击"确定"在新窗口打开原站播放，或"取消"关闭。\n\n提示：原站可能有广告，请注意安全。`);
+        if (useIframe) {
+          window.open(iframeUrl, '_blank');
+        }
       }
     } catch (err) {
       console.error('Play error:', err);
+      alert('❌ 网络错误，请检查网络连接后重试');
     } finally {
       setFetchingAudioId(null);
     }
