@@ -6,6 +6,7 @@ import { usePlayer } from '@/lib/PlayerContext';
 import { useUser } from '@/lib/UserContext';
 import { BookDetail, Chapter } from '@/lib/types';
 import { proxyCoverUrl, proxyAudioUrl } from '@/lib/proxy';
+import CleanPlayer from '@/components/CleanPlayer';
 
 export default function BookPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -16,6 +17,7 @@ export default function BookPage({ params }: { params: Promise<{ id: string }> }
   const [loading, setLoading] = useState(true);
   const [currentTab, setCurrentTab] = useState('0');
   const [fetchingAudioId, setFetchingAudioId] = useState<string | null>(null);
+  const [activeTingId, setActiveTingId] = useState<string | null>(null);
   const currentChapterRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -65,10 +67,12 @@ export default function BookPage({ params }: { params: Promise<{ id: string }> }
           data?.chapters.map(c => ({ tingId: c.tingId, title: c.title })) || []
         );
       } else {
-        alert('无法解析音频地址，请稍后再试');
+        // 音频无法解析时，显示净化的原站播放器
+        setActiveTingId(chapter.tingId);
       }
     } catch (err) {
       console.error('Play error:', err);
+      alert('❌ 网络错误，请检查网络连接后重试');
     } finally {
       setFetchingAudioId(null);
     }
@@ -210,6 +214,14 @@ export default function BookPage({ params }: { params: Promise<{ id: string }> }
           })}
         </div>
       </main>
+
+      {/* Clean Player Proxy Modal */}
+      {activeTingId && (
+        <CleanPlayer 
+          tingId={activeTingId} 
+          onClose={() => setActiveTingId(null)} 
+        />
+      )}
     </div>
   );
 }

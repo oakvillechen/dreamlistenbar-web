@@ -23,11 +23,29 @@ export default function MyPage() {
 
   const handlePlayHistory = async (item: typeof history[0]) => {
     try {
+      // 1. 先获取书籍详情以拿到完整的章节列表
+      const bookRes = await fetch(`/api/book/${item.bookId}?page=0`);
+      const bookData = await bookRes.json();
+      const chaptersList = bookData.success 
+        ? bookData.chapters.map((c: any) => ({ tingId: c.tingId, title: c.title }))
+        : [];
+
+      // 2. 获取音轨地址
       const res = await fetch(`/api/audio?tingId=${item.tingId}`);
       const data = await res.json();
+      
       if (data.success && data.audio_url) {
         const audioUrl = proxyAudioUrl(data.audio_url);
-        play(audioUrl, item.chapterTitle, item.cover, item.tingId, item.bookId, item.bookTitle, item.chapterIndex, []);
+        play(
+          audioUrl, 
+          item.chapterTitle, 
+          item.cover, 
+          item.tingId, 
+          item.bookId, 
+          item.bookTitle, 
+          item.chapterIndex, 
+          chaptersList
+        );
       }
     } catch (err) {
       console.error('Failed to play history item:', err);

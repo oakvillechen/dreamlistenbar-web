@@ -53,18 +53,28 @@ export default function Player({
       setIsLoading(true);
       setError(null);
       
-      const currentSrc = audioRef.current.currentSrc || audioRef.current.src;
+      const audio = audioRef.current;
+      const currentSrc = audio.currentSrc || audio.src;
+      
       if (currentSrc !== audioUrl) {
-        audioRef.current.src = audioUrl;
-        audioRef.current.load();
+        audio.src = audioUrl;
+        audio.load();
       }
       
-      audioRef.current.play().then(() => {
-        setIsPlaying(true);
-      }).catch(err => {
-        console.error('Auto-play blocked:', err);
-        setIsPlaying(false);
-      });
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.then(() => {
+          setIsPlaying(true);
+          setIsLoading(false);
+        }).catch(err => {
+          if (err.name === 'AbortError') {
+            console.log('Play request interrupted by a new load request (expected behavior on switching)');
+          } else {
+            console.error('Play error:', err);
+            setIsPlaying(false);
+          }
+        });
+      }
     }
   }, [audioUrl]);
 
@@ -196,7 +206,6 @@ export default function Player({
 
   const goToBook = () => {
     if (bookId) {
-      onClose();
       router.push(`/book/${bookId}`);
     }
   };
@@ -393,12 +402,12 @@ export default function Player({
             )}
           </button>
 
-          {/* 快进30秒 */}
+          {/* 快进15秒 */}
           <button
-            onClick={() => handleSkip(30)}
+            onClick={() => handleSkip(15)}
             className="w-14 h-12 flex flex-col items-center justify-center rounded-xl text-gray-300 hover:text-white hover:bg-white/10 transition-all active:scale-95"
           >
-            <span className="text-sm font-bold">+30</span>
+            <span className="text-sm font-bold">+15</span>
             <span className="text-[9px] text-gray-500">秒</span>
           </button>
 

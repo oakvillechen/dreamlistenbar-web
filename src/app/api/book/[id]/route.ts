@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Render 后端 URL
-const RENDER_URL = 'https://dreamlistenbar-backend.onrender.com';
+// 后端 URL
+const BACKEND_URL = process.env.BACKEND_URL || 'https://dreamlistenbar-backend.onrender.com';
 
 export async function GET(
   request: NextRequest,
@@ -12,8 +12,8 @@ export async function GET(
   const page = searchParams.get('page') || '0';
 
   try {
-    // 使用 Render 后端
-    const res = await fetch(`${RENDER_URL}/api/book/${id}?page=${page}`, {
+    // 使用后端
+    const res = await fetch(`${BACKEND_URL}/api/book/${id}?page=${page}`, {
       headers: { 'ngrok-skip-browser-warning': 'true' }
     });
 
