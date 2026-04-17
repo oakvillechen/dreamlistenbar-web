@@ -6,6 +6,7 @@ import { usePlayer } from '@/lib/PlayerContext';
 import { useUser } from '@/lib/UserContext';
 import { BookDetail, Chapter } from '@/lib/types';
 import { proxyCoverUrl, proxyAudioUrl } from '@/lib/proxy';
+import CleanPlayer from '@/components/CleanPlayer';
 
 export default function BookPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -16,6 +17,7 @@ export default function BookPage({ params }: { params: Promise<{ id: string }> }
   const [loading, setLoading] = useState(true);
   const [currentTab, setCurrentTab] = useState('0');
   const [fetchingAudioId, setFetchingAudioId] = useState<string | null>(null);
+  const [activeTingId, setActiveTingId] = useState<string | null>(null);
   const currentChapterRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -65,12 +67,8 @@ export default function BookPage({ params }: { params: Promise<{ id: string }> }
           data?.chapters.map(c => ({ tingId: c.tingId, title: c.title })) || []
         );
       } else {
-        // 音频不可用时，使用 iframe 嵌入原站播放器
-        const iframeUrl = `http://www.yuetingba.cn/book/Ting/${chapter.tingId}`;
-        const useIframe = confirm(`该章节音频暂时无法解析。\n\n点击"确定"在新窗口打开原站播放，或"取消"关闭。\n\n提示：原站可能有广告，请注意安全。`);
-        if (useIframe) {
-          window.open(iframeUrl, '_blank');
-        }
+        // 音频无法解析时，显示净化的原站播放器
+        setActiveTingId(chapter.tingId);
       }
     } catch (err) {
       console.error('Play error:', err);
@@ -216,6 +214,14 @@ export default function BookPage({ params }: { params: Promise<{ id: string }> }
           })}
         </div>
       </main>
+
+      {/* Clean Player Proxy Modal */}
+      {activeTingId && (
+        <CleanPlayer 
+          tingId={activeTingId} 
+          onClose={() => setActiveTingId(null)} 
+        />
+      )}
     </div>
   );
 }
