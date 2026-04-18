@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 
 // 后端 URL
-const BACKEND_URL = process.env.BACKEND_URL || 'https://dreamlistenbar-backend.onrender.com';
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
 
 export async function GET(request: NextRequest) {
   const url = request.nextUrl.searchParams.get('url');
@@ -11,33 +11,33 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // 转发给后端处理，或者直接在这里处理
-    // 为了统一逻辑，我们转发给后端
+    // 通过后端代理音频（后端添加了正确的 Referer 和 User-Agent）
     const res = await fetch(`${BACKEND_URL}/api/proxy-audio?url=${encodeURIComponent(url)}`, {
       method: 'GET',
       headers: {
-        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X)',
-        'Referer': 'http://yuetingba.cn/'
-      }
+        'Range': request.headers.get('range') || '',
+      },
     });
 
     if (!res.ok) {
-      return new Response('Failed to fetch audio from backend', { status: res.status });
+      return new Response('Failed to fetch audio', { status: res.status });
     }
 
+    const headers = new Headers();
     const contentType = res.headers.get('content-type') || 'audio/mpeg';
     const contentLength = res.headers.get('content-length');
+    const contentRange = res.headers.get('content-range');
 
-    const headers = new Headers();
     headers.set('Content-Type', contentType);
     if (contentLength) headers.set('Content-Length', contentLength);
+    if (contentRange) headers.set('Content-Range', contentRange);
     headers.set('Accept-Ranges', 'bytes');
     headers.set('Cache-Control', 'public, max-age=3600');
     headers.set('Access-Control-Allow-Origin', '*');
 
     return new Response(res.body, {
-      status: 200,
-      headers: headers,
+      status: contentRange ? 206 : 200,
+      headers,
     });
   } catch (error) {
     console.error('Proxy audio error:', error);
